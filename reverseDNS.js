@@ -1,125 +1,90 @@
-// HTML要素を取得する
-var input = document.getElementById("input"); // 入力欄
-var output = document.getElementById("output"); // 出力欄
-var button = document.getElementById("button"); // ボタン
+/**
+ * reverseDNS.js - Standalone Controller for reverseDNS.html
+ */
 
-// ボタンがクリックされたときの処理を定義する
-button.onclick = function() {
-  // 入力欄の値を取得する
-  var value = input.value;
+document.addEventListener('DOMContentLoaded', () => {
+  const { IPUtils } = window;
 
-  // 入力欄の値が空でないかチェックする
-  if (value === "") {
-    // 空の場合は、出力欄にメッセージを表示する
-    output.value = "入力欄に値を入力してください。";
-  } else {
-    // 空でない場合は、入力欄の値が逆引きDNS レコードかIPアドレスか判定する
-    if (value.endsWith(".ip6.arpa")) {
-      // IPv6の逆引きDNS レコードの場合は、IPアドレスに変換する
-      output.value = reverseDNS2IP(value, true);
-    } else if (value.endsWith(".in-addr.arpa")) {
-      // IPv4の逆引きDNS レコードの場合は、IPアドレスに変換する
-      output.value = reverseDNS2IP(value, false);
-    } else {
-      // IPアドレスの場合は、逆引きDNS レコードに変換する
-      output.value = IP2reverseDNS(value);
+  const inputEl = document.getElementById('input');
+  const alertBox = document.getElementById('alert-box');
+  const outputMain = document.getElementById('output-main');
+  const outputLabel = document.getElementById('output-label');
+  const outputBadge = document.getElementById('output-badge');
+  const outputExtraWrap = document.getElementById('output-extra-wrap');
+  const outputExtra = document.getElementById('output-extra');
+
+  function convert() {
+    const raw = inputEl.value.trim();
+    alertBox.classList.add('alert-hidden');
+    alertBox.textContent = '';
+    inputEl.classList.remove('error');
+    outputExtraWrap.style.display = 'none';
+
+    if (!raw) {
+      outputMain.textContent = '-';
+      outputLabel.textContent = '変換結果';
+      outputBadge.textContent = 'PTR Record';
+      return;
     }
-  }
-};
 
-// 逆引きDNS レコードをIPアドレスに変換する関数を定義する
-function reverseDNS2IP(reverseDNS, IP6) {
-  // レコードを"."で分割する
-  var parts = reverseDNS.split(".");
+    // Check if Reverse DNS string (.in-addr.arpa or .ip6.arpa)
+    const reversed = IPUtils.reverseDNSToIP(raw);
+    if (reversed) {
+      outputLabel.textContent = reversed.type === 'ipv4' ? 'IPv4 アドレス' : 'IPv6 アドレス (RFC 5952 推奨)';
+      outputBadge.textContent = reversed.type === 'ipv4' ? 'IPv4' : 'IPv6';
+      outputMain.textContent = reversed.ip;
 
-  // 最初の2つの要素を除く
-  parts = parts.slice(0, -2);
-
-  // 逆順にする
-  parts = parts.reverse();
-
-  if(IP6){
-    //IPv6の時実行
-
-	  // 4つずつグループにする
-	  var groups = [];
-	  for (var i = 0; i < parts.length; i += 4) {
-	    var group = parts.slice(i, i + 4).join("");
-	    groups.push(group);
-	  }
-
-    for(var i in groups) {
-      let index = 0;
-      while (index < 3 && groups[i].charAt(index)==='0') index++;
-      groups[i] = groups[i].slice(index)
-    };
-	
-	  // グループを":"で結合する
-	  var ip = groups.join(":");
-	} else {
-    //IPv4の時実行
-
-	  // グループを"."で結合する
-	  var ip = parts.join(".");
-  }
-
-  // IPアドレスを返す
-  return ip;
-}
-
-// IPv6アドレスの正規表現
-const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-
-// IPv4アドレスの正規表現
-const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-
-// IPアドレスを逆引きDNS レコードに変換する関数を定義する
-function IP2reverseDNS(ip) {
-  // IPv6アドレスに合致するかチェック
-  if (ipv6Regex.test(ip)) {
-    // IPアドレスを分割する
-    var groups = ip.split(":");
-
-    // 各グループを4桁にする
-    for (var i = 0; i < groups.length; i++) {
-      var group = groups[i];
-      while (group.length < 4) {
-        group = "0" + group;
+      if (reversed.fullIPv6) {
+        outputExtraWrap.style.display = 'block';
+        outputExtra.textContent = reversed.fullIPv6;
       }
-      groups[i] = group;
+      return;
     }
 
-    // IPアドレスを再結合する
-    ip = groups.join("");
+    // Check if IP address (IPv4 or IPv6)
+    const ptr = IPUtils.ipToReverseDNS(raw);
+    if (ptr) {
+      outputLabel.textContent = '逆引きDNS (PTR レコード)';
+      outputBadge.textContent = ptr.type === 'ipv4' ? 'in-addr.arpa' : 'ip6.arpa';
+      outputMain.textContent = ptr.record;
+      return;
+    }
 
-    // IPアドレスを逆順にする
-    ip = ip.split("").reverse().join("");
-
-    // IPアドレスの各桁をドットで区切る
-    ip = ip.replace(/(.)/g, "$1.");
-
-    // 末尾のドットを削除する
-    ip = ip.slice(0, -1);
-
-    // ip6.arpaを追加する
-    return ip + ".ip6.arpa";
+    // Invalid input
+    alertBox.textContent = '有効なIPアドレス (例: 192.168.1.1, 2001:db8::1) または逆引きレコード (.in-addr.arpa, .ip6.arpa) を入力してください。';
+    alertBox.classList.remove('alert-hidden');
+    inputEl.classList.add('error');
+    outputMain.textContent = '-';
   }
-  // IPv4アドレスに合致するかチェック
-  else if (ipv4Regex.test(ip)) {
-    // IPアドレスを分割する
-    var groups = ip.split(".");
 
-    // IPアドレスを逆順にする
-    groups = groups.reverse();
+  inputEl.addEventListener('input', convert);
 
-    // IPアドレスを再結合する
-    ip = groups.join(".");
+  document.querySelectorAll('[data-fill]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      inputEl.value = btn.getAttribute('data-fill');
+      convert();
+      inputEl.focus();
+    });
+  });
 
-    // in-addr.arpaを追加する
-    return ip + ".in-addr.arpa";
-  }
-  // どちらでもない場合
-  else {
-    return "不正なIPアドレスです。";
-  }
-}
+  // Copy button
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-copy');
+    if (!btn) return;
+    const targetId = btn.getAttribute('data-target');
+    const targetEl = document.getElementById(targetId);
+    if (!targetEl) return;
+    const text = targetEl.textContent.trim();
+    if (!text || text === '-') return;
+
+    navigator.clipboard.writeText(text).then(() => {
+      const origText = btn.textContent;
+      btn.textContent = 'コピー完了!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = origText;
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  });
+});

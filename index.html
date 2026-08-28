@@ -2,13 +2,212 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>アドレス変換</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IP Address Converter | 高機能IPアドレス変換ツール</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-        <p>このサイトはIPアドレスの各種変換をすることができるサイトです</p>
-  <a href="nat64.html">nat64アドレスの変換</a>
-  <p>nat64形式のIPv6アドレスからIPv4アドレスに変換することができます。</p>
-  <a href="reverseDNS.html">逆引きDNS レコードとIPアドレスの変換</a>
-  <p>逆引きドメイン名とIPアドレスを相互に変換できます。</p>
+  <div class="container">
+    <header>
+      <h1 class="site-title">⚡ IP Address Converter</h1>
+      <p class="site-description">NAT64・IPv4写像アドレス・逆引きDNS (PTR)・IPv6圧縮展開の相互変換ツール</p>
+    </header>
+
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab active" data-tab="nat64" role="tab">NAT64 / IPv4写像</button>
+      <button class="nav-tab" data-tab="reversedns" role="tab">逆引きDNS (PTR)</button>
+      <button class="nav-tab" data-tab="analyzer" role="tab">IPアナライザー・IPv6展開/圧縮</button>
+    </nav>
+
+    <!-- Tab 1: NAT64 / IPv4-Mapped -->
+    <main id="tab-nat64" class="tab-content">
+      <div class="card">
+        <h2 class="card-title">🔄 NAT64 & IPv4写像アドレス相互変換</h2>
+        <p class="card-desc">IPv4アドレスと NAT64 (RFC 6052 /96 Well-Known Prefix: <code>64:ff9b::/96</code>) または IPv4写像アドレス (<code>::ffff:0:0/96</code>) を相互に変換します。</p>
+
+        <div class="mode-selector">
+          <button type="button" class="mode-btn active" id="nat64-mode-auto">自動判定 (双方向)</button>
+          <button type="button" class="mode-btn" id="nat64-mode-v4tov6">IPv4 → IPv6 (NAT64)</button>
+          <button type="button" class="mode-btn" id="nat64-mode-v6tov4">IPv6 (NAT64) → IPv4</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="nat64-input">入力アドレス (IPv4 または NAT64 / IPv4写像 IPv6)</label>
+          <div class="input-wrapper">
+            <input type="text" id="nat64-input" class="input-text" placeholder="例: 192.0.2.1 または 64:ff9b::c000:201" autofocus>
+          </div>
+          <div class="sample-chips">
+            <span class="sample-label">サンプル:</span>
+            <button type="button" class="sample-chip" data-fill-nat64="192.0.2.33">192.0.2.33</button>
+            <button type="button" class="sample-chip" data-fill-nat64="64:ff9b::c000:221">64:ff9b::c000:221</button>
+            <button type="button" class="sample-chip" data-fill-nat64="64:ff9b::192.0.2.33">64:ff9b::192.0.2.33</button>
+            <button type="button" class="sample-chip" data-fill-nat64="::ffff:192.0.2.33">::ffff:192.0.2.33</button>
+          </div>
+        </div>
+
+        <div id="nat64-alert" class="alert alert-error alert-hidden"></div>
+
+        <div id="nat64-results" class="result-group">
+          <div class="result-item" id="res-nat64-v4-wrap">
+            <div class="result-header">
+              <span class="result-title">IPv4 アドレス</span>
+            </div>
+            <div class="copy-box">
+              <span class="result-value" id="res-nat64-v4">-</span>
+              <button type="button" class="btn-copy" data-target="res-nat64-v4">コピー</button>
+            </div>
+          </div>
+
+          <div class="result-item" id="res-nat64-wkp-wrap">
+            <div class="result-header">
+              <span class="result-title">NAT64 アドレス (RFC 6052 最適圧縮)</span>
+            </div>
+            <div class="copy-box">
+              <span class="result-value" id="res-nat64-wkp">-</span>
+              <button type="button" class="btn-copy" data-target="res-nat64-wkp">コピー</button>
+            </div>
+          </div>
+
+          <div class="result-item" id="res-nat64-full-wrap">
+            <div class="result-header">
+              <span class="result-title">NAT64 アドレス (完全展開)</span>
+            </div>
+            <div class="copy-box">
+              <span class="result-value" id="res-nat64-full">-</span>
+              <button type="button" class="btn-copy" data-target="res-nat64-full">コピー</button>
+            </div>
+          </div>
+
+          <div class="result-item" id="res-nat64-mapped-wrap">
+            <div class="result-header">
+              <span class="result-title">IPv4写像アドレス (IPv4-Mapped IPv6)</span>
+            </div>
+            <div class="copy-box">
+              <span class="result-value" id="res-nat64-mapped">-</span>
+              <button type="button" class="btn-copy" data-target="res-nat64-mapped">コピー</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Tab 2: Reverse DNS -->
+    <main id="tab-reversedns" class="tab-content" style="display: none;">
+      <div class="card">
+        <h2 class="card-title">🌐 逆引きDNS レコード (PTR) 相互変換</h2>
+        <p class="card-desc">IPアドレス (IPv4 / IPv6) と 逆引きドメイン (<code>.in-addr.arpa</code> / <code>.ip6.arpa</code>) を双方向に変換します。RFC 5952 に準拠したゼロ圧縮 IPv6 も自動処理します。</p>
+
+        <div class="form-group">
+          <label class="form-label" for="rdns-input">入力 (IPアドレス または 逆引きDNSレコード)</label>
+          <div class="input-wrapper">
+            <input type="text" id="rdns-input" class="input-text" placeholder="例: 192.168.1.1 または 2001:db8::1 または 1.1.168.192.in-addr.arpa">
+          </div>
+          <div class="sample-chips">
+            <span class="sample-label">サンプル:</span>
+            <button type="button" class="sample-chip" data-fill-rdns="192.168.1.1">192.168.1.1</button>
+            <button type="button" class="sample-chip" data-fill-rdns="2001:db8::1">2001:db8::1</button>
+            <button type="button" class="sample-chip" data-fill-rdns="1.1.168.192.in-addr.arpa">1.1.168.192.in-addr.arpa</button>
+            <button type="button" class="sample-chip" data-fill-rdns="1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa">2001:db8::1 (ip6.arpa)</button>
+          </div>
+        </div>
+
+        <div id="rdns-alert" class="alert alert-error alert-hidden"></div>
+
+        <div id="rdns-results" class="result-group">
+          <div class="result-item">
+            <div class="result-header">
+              <span class="result-title" id="res-rdns-label-1">変換結果</span>
+              <span class="badge" id="res-rdns-badge-1">PTR Record</span>
+            </div>
+            <div class="copy-box">
+              <span class="result-value" id="res-rdns-val-1">-</span>
+              <button type="button" class="btn-copy" data-target="res-rdns-val-1">コピー</button>
+            </div>
+          </div>
+
+          <div class="result-item" id="res-rdns-extra-wrap" style="display: none;">
+            <div class="result-header">
+              <span class="result-title">IPv6 完全展開形式</span>
+            </div>
+            <div class="copy-box">
+              <span class="result-value" id="res-rdns-extra-val">-</span>
+              <button type="button" class="btn-copy" data-target="res-rdns-extra-val">コピー</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Tab 3: IP Analyzer -->
+    <main id="tab-analyzer" class="tab-content" style="display: none;">
+      <div class="card">
+        <h2 class="card-title">🔍 IP詳細アナライザー & IPv6圧縮/展開</h2>
+        <p class="card-desc">入力された IPv4 / IPv6 アドレスの詳細情報（スコープ、10進数、16進数、2進数、圧縮/展開）を解析します。</p>
+
+        <div class="form-group">
+          <label class="form-label" for="analyzer-input">IPアドレスを入力</label>
+          <div class="input-wrapper">
+            <input type="text" id="analyzer-input" class="input-text" placeholder="例: 172.16.254.1 または 2001:0db8:0000:0000:0000:0000:0000:0001">
+          </div>
+          <div class="sample-chips">
+            <span class="sample-label">サンプル:</span>
+            <button type="button" class="sample-chip" data-fill-analyzer="10.0.0.1">10.0.0.1 (Private)</button>
+            <button type="button" class="sample-chip" data-fill-analyzer="2001:db8::1">2001:db8::1</button>
+            <button type="button" class="sample-chip" data-fill-analyzer="fe80::1">fe80::1 (Link-Local)</button>
+            <button type="button" class="sample-chip" data-fill-analyzer="64:ff9b::192.0.2.1">64:ff9b::192.0.2.1 (NAT64)</button>
+          </div>
+        </div>
+
+        <div id="analyzer-alert" class="alert alert-error alert-hidden"></div>
+
+        <div id="analyzer-results" class="result-group" style="display: none;">
+          <table class="details-table">
+            <tbody>
+              <tr>
+                <th>IPバージョン</th>
+                <td id="det-version">-</td>
+              </tr>
+              <tr>
+                <th>標準表記 (RFC 5952)</th>
+                <td id="det-standard">-</td>
+              </tr>
+              <tr id="det-full-row">
+                <th>完全展開表記</th>
+                <td id="det-full">-</td>
+              </tr>
+              <tr>
+                <th>スコープ / 属性</th>
+                <td id="det-scope">-</td>
+              </tr>
+              <tr>
+                <th>逆引きDNS (PTR)</th>
+                <td id="det-reverse">-</td>
+              </tr>
+              <tr id="det-decimal-row">
+                <th>10進数 (Integer)</th>
+                <td id="det-decimal">-</td>
+              </tr>
+              <tr>
+                <th>16進数 (Hex)</th>
+                <td id="det-hex">-</td>
+              </tr>
+              <tr>
+                <th>2進数 (Binary)</th>
+                <td id="det-binary">-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>単独ツール: <a href="nat64.html">NAT64 変換</a> | <a href="reverseDNS.html">逆引きDNS 変換</a></p>
+      <p style="margin-top: 0.5rem;">© <a href="https://github.com/kanakou/ipaddr-changer" target="_blank" rel="noopener">ipaddr-changer</a> — 高精度 IP アドレス変換ツール</p>
+    </footer>
+  </div>
+
+  <script src="js/ip-utils.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

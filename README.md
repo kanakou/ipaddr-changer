@@ -1,11 +1,108 @@
-# 概要
+# IP Address Converter (ipaddr-changer)
 
-このサイトはIPアドレスの変換ツールをまとめたサイトです
+⚡ **IP Address Converter** は、IPv4 / IPv6 アドレス、NAT64 プレフィックス、IPv4写像アドレス、および逆引き DNS (PTR) レコードを相互に変換・解析できる高精度 Web ツール & JavaScript ライブラリです。
 
-## 制作方法
+---
 
-このプログラムはLLMが書いたものを修正して作成したものです
+## 🌟 主な機能
 
-## 注意事項
+### 1. 🔄 NAT64 & IPv4写像アドレス相互変換
+- **NAT64 (RFC 6052 /96 Well-Known Prefix `64:ff9b::/96`) 相互変換**:
+  - IPv4 アドレス（例: `192.0.2.1`）から NAT64 アドレス（例: `64:ff9b::c000:201`）へ変換
+  - NAT64 アドレスから IPv4 アドレスへの抽出・復元
+  - 16進表記・ドット併記表記（`64:ff9b::192.0.2.1`）の両方に対応
+- **IPv4写像アドレス (IPv4-Mapped IPv6 `::ffff:0:0/96`) 相互変換**:
+  - IPv4 と `::ffff:x.x.x.x` の双方向変換
 
-このプログラムは未完成です
+### 2. 🌐 逆引き DNS (PTR レコード) 相互変換
+- **IPv4 (in-addr.arpa)**:
+  - `192.168.1.1` ↔ `1.1.168.192.in-addr.arpa`
+- **IPv6 (ip6.arpa)**:
+  - `2001:db8::1` ↔ `1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa`
+  - 省略記法（`::`）を含むあらゆる有効な IPv6 アドレスに対応
+  - RFC 5952 に準拠した最適圧縮 IPv6 および完全展開 IPv6 を生成
+
+### 3. 🔍 IP 詳細アナライザー & IPv6 圧縮/展開
+- **詳細情報の解析**:
+  - アドレス種別 / スコープ判定（グローバル、プライベート、ループバック、リンクローカル、マルチキャスト、NAT64、ULAなど）
+  - 10進数（Integer）、16進数（Hex）、2進数（Binary）表記
+  - RFC 5952 推奨の最短圧縮形式と完全展開（32文字16進）形式
+
+### 4. 🎨 洗練された UI / UX
+- **リアルタイム変換**: 入力と同時に瞬時に変換結果を表示
+- **ワンクリックコピー**: 出力結果をクリップボードに素早くコピー
+- **サンプル入力ボタン**: ワンクリックでテスト用 IP アドレスを入力
+- **ダークモード対応**: システム外観設定に応じた自動ダークテーマ
+
+---
+
+## 📁 ディレクトリ構成
+
+```
+ipaddr-changer/
+├── css/
+│   └── style.css            # デザインシステム & スタイルシート
+├── js/
+│   ├── ip-utils.js          # コア変換ロジック (ブラウザ・Node.js 共通)
+│   └── app.js               # index.html 用コントローラー
+├── test/
+│   └── ip-utils.test.js     # 単体テスト (node:test)
+├── index.html               # 統合 Web アプリケーション
+├── nat64.html               # NAT64 専用ページ
+├── nat64.js                 # NAT64 専用ページ用スクリプト
+├── reverseDNS.html          # 逆引き DNS 専用ページ
+├── reverseDNS.js            # 逆引き DNS 専用ページ用スクリプト
+└── README.md                # ドキュメント
+```
+
+---
+
+## 🚀 使い方
+
+### Web ブラウザで利用する場合
+ローカルまたは静的 Web サーバー（GitHub Pages 等）に配置し、`index.html` をブラウザで開くだけで動作します。外部ライブラリ依存はありません。
+
+```bash
+# 例: Python の簡易 HTTP サーバーで起動
+python3 -m http.server 8000
+# http://localhost:8000 をブラウザで開く
+```
+
+### Node.js ライブラリとして利用する場合
+`js/ip-utils.js` は UMD モジュールとして作成されているため、Node.js 環境でも直接 `require` して利用可能です。
+
+```javascript
+const IPUtils = require('./js/ip-utils.js');
+
+// IPv4 -> NAT64
+const nat64 = IPUtils.convertV4ToNat64('192.0.2.1');
+console.log(nat64.standard); // '64:ff9b::c000:201'
+
+// IPv6 -> 逆引き DNS (ip6.arpa)
+const ptr = IPUtils.ipToReverseDNS('2001:db8::1');
+console.log(ptr.record);
+// '1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa'
+
+// 逆引き DNS -> IPv6
+const ip = IPUtils.reverseDNSToIP('1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa');
+console.log(ip.ip); // '2001:db8::1'
+```
+
+---
+
+## 🧪 テストの実行
+
+Node.js 標準のテストランナーを使用して単体テストを実行できます。
+
+```bash
+node --test test/ip-utils.test.js
+```
+
+---
+
+## 📜 準拠 RFC / 仕様
+- [RFC 4291](https://datatracker.ietf.org/doc/html/rfc4291) - IP Version 6 Addressing Architecture
+- [RFC 5952](https://datatracker.ietf.org/doc/html/rfc5952) - A Recommendation for IPv6 Text Representation
+- [RFC 6052](https://datatracker.ietf.org/doc/html/rfc6052) - IPv6 Addressing of IPv4/IPv6 Translators (NAT64)
+- [RFC 1035](https://datatracker.ietf.org/doc/html/rfc1035) - Domain Names - Implementation and Specification (in-addr.arpa / ip6.arpa)
+- [RFC 1918](https://datatracker.ietf.org/doc/html/rfc1918) - Address Allocation for Private Internets

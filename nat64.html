@@ -2,16 +2,89 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>IPv4写像アドレスの変換</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NAT64 / IPv4写像アドレス 相互変換ツール</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <h1>IPv4写像アドレスの変換</h1>
-  <p>入力欄にIPv6アドレスを入力して、ボタンを押してください。</p>
-  <input id="input" type="text" placeholder="例64:ff9b::c000:1401"> <!-- 入力欄 -->
-  <button id="button">変換</button> <!-- ボタン -->
-  <p>出力欄に変換結果が表示されます。</p>
-  <input id="output" type="text" readonly> <!-- 出力欄 -->
+  <div class="container">
+    <header>
+      <h1 class="site-title">🔄 NAT64 / IPv4写像アドレス変換</h1>
+      <p class="site-description">IPv4アドレスと NAT64 (RFC 6052 <code>64:ff9b::/96</code>) / IPv4写像アドレス (<code>::ffff:0:0/96</code>) の双方向変換</p>
+    </header>
+
+    <div class="card">
+      <div class="mode-selector">
+        <button type="button" class="mode-btn active" id="mode-auto">自動判定 (双方向)</button>
+        <button type="button" class="mode-btn" id="mode-v4tov6">IPv4 → IPv6</button>
+        <button type="button" class="mode-btn" id="mode-v6tov4">IPv6 → IPv4</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input">入力アドレス (IPv4 または NAT64 / IPv4写像 IPv6)</label>
+        <div class="input-wrapper">
+          <input id="input" type="text" class="input-text" placeholder="例: 192.0.2.1 または 64:ff9b::c000:201" autofocus>
+        </div>
+        <div class="sample-chips">
+          <span class="sample-label">サンプル:</span>
+          <button type="button" class="sample-chip" data-fill="192.0.2.1">192.0.2.1</button>
+          <button type="button" class="sample-chip" data-fill="64:ff9b::c000:201">64:ff9b::c000:201</button>
+          <button type="button" class="sample-chip" data-fill="64:ff9b::192.0.2.1">64:ff9b::192.0.2.1</button>
+          <button type="button" class="sample-chip" data-fill="::ffff:192.0.2.1">::ffff:192.0.2.1</button>
+        </div>
+      </div>
+
+      <div id="alert-box" class="alert alert-error alert-hidden"></div>
+
+      <div class="result-group">
+        <div class="result-item">
+          <div class="result-header">
+            <span class="result-title">IPv4 アドレス</span>
+          </div>
+          <div class="copy-box">
+            <span class="result-value" id="output-v4">-</span>
+            <button type="button" class="btn-copy" data-target="output-v4">コピー</button>
+          </div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-header">
+            <span class="result-title">NAT64 (RFC 6052 最短圧縮形式)</span>
+          </div>
+          <div class="copy-box">
+            <span class="result-value" id="output-wkp">-</span>
+            <button type="button" class="btn-copy" data-target="output-wkp">コピー</button>
+          </div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-header">
+            <span class="result-title">NAT64 (完全展開 16進形式)</span>
+          </div>
+          <div class="copy-box">
+            <span class="result-value" id="output-full">-</span>
+            <button type="button" class="btn-copy" data-target="output-full">コピー</button>
+          </div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-header">
+            <span class="result-title">IPv4写像アドレス (IPv4-Mapped IPv6)</span>
+          </div>
+          <div class="copy-box">
+            <span class="result-value" id="output-mapped">-</span>
+            <button type="button" class="btn-copy" data-target="output-mapped">コピー</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p><a href="index.html">← トップ (統合ツール) へ戻る</a> | <a href="reverseDNS.html">逆引きDNS 変換 →</a></p>
+    </footer>
+  </div>
+
+  <script src="js/ip-utils.js"></script>
   <script src="nat64.js"></script>
-  <a href="index.html">TOP</a>
 </body>
 </html>
