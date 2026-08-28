@@ -173,9 +173,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- TAB 2: Reverse DNS ---
   const rdnsInput = document.getElementById('rdns-input');
   const rdnsAlert = document.getElementById('rdns-alert');
+  const rdnsWarn = document.getElementById('rdns-warn');
   const resRdnsLabel1 = document.getElementById('res-rdns-label-1');
   const resRdnsBadge1 = document.getElementById('res-rdns-badge-1');
   const resRdnsVal1 = document.getElementById('res-rdns-val-1');
+  const resRdnsOriginWrap = document.getElementById('res-rdns-origin-wrap');
+  const resRdnsOriginVal = document.getElementById('res-rdns-origin-val');
+  const resRdnsRfc2317Wrap = document.getElementById('res-rdns-rfc2317-wrap');
+  const resRdnsRfc2317Val = document.getElementById('res-rdns-rfc2317-val');
   const resRdnsExtraWrap = document.getElementById('res-rdns-extra-wrap');
   const resRdnsExtraVal = document.getElementById('res-rdns-extra-val');
 
@@ -183,12 +188,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const rawVal = rdnsInput.value.trim();
     rdnsAlert.classList.add('alert-hidden');
     rdnsAlert.textContent = '';
+    rdnsWarn.classList.add('alert-hidden');
+    rdnsWarn.textContent = '';
     rdnsInput.classList.remove('error');
     resRdnsExtraWrap.style.display = 'none';
+    resRdnsRfc2317Wrap.style.display = 'none';
+    resRdnsOriginWrap.style.display = 'block';
 
     if (!rawVal) {
       resRdnsVal1.textContent = '-';
-      resRdnsLabel1.textContent = '変換結果';
+      resRdnsOriginVal.textContent = '-';
+      resRdnsLabel1.textContent = '変換結果 (レコード / ゾーン名)';
       resRdnsBadge1.textContent = 'PTR Record';
       return;
     }
@@ -196,9 +206,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check if input is Reverse DNS string (.in-addr.arpa or .ip6.arpa)
     const reversed = IPUtils.reverseDNSToIP(rawVal);
     if (reversed) {
-      resRdnsLabel1.textContent = reversed.type === 'ipv4' ? 'IPv4 アドレス' : 'IPv6 アドレス (RFC 5952 推奨)';
-      resRdnsBadge1.textContent = reversed.type === 'ipv4' ? 'IPv4' : 'IPv6';
+      const isZone = reversed.isZone;
+      resRdnsLabel1.textContent = reversed.type === 'ipv4'
+        ? (isZone ? `IPv4 サブネットネットワーク (/${reversed.prefix})` : 'IPv4 アドレス')
+        : (isZone ? `IPv6 プレフィックスネットワーク (/${reversed.prefix})` : 'IPv6 アドレス (RFC 5952 推奨)');
+      resRdnsBadge1.textContent = isZone ? 'Network / CIDR' : (reversed.type === 'ipv4' ? 'IPv4 Host' : 'IPv6 Host');
       resRdnsVal1.textContent = reversed.ip;
+      resRdnsOriginWrap.style.display = 'none';
 
       if (reversed.fullIPv6) {
         resRdnsExtraWrap.style.display = 'block';
@@ -207,20 +221,38 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Check if input is IP (IPv4 or IPv6)
+    // Check if input is IP or CIDR (IPv4 or IPv6)
     const ptr = IPUtils.ipToReverseDNS(rawVal);
     if (ptr) {
-      resRdnsLabel1.textContent = '逆引きDNS (PTR レコード)';
-      resRdnsBadge1.textContent = ptr.type === 'ipv4' ? 'in-addr.arpa' : 'ip6.arpa';
+      if (ptr.isZone) {
+        resRdnsLabel1.textContent = `逆引き委任ゾーン名 (/${ptr.prefix} 委任ゾーン)`;
+        resRdnsBadge1.textContent = 'Zone Name';
+      } else {
+        resRdnsLabel1.textContent = '逆引きDNS (PTR レコード名)';
+        resRdnsBadge1.textContent = ptr.type === 'ipv4' ? 'in-addr.arpa' : 'ip6.arpa';
+      }
+
       resRdnsVal1.textContent = ptr.record;
+      resRdnsOriginVal.textContent = ptr.origin;
+
+      if (ptr.warning) {
+        rdnsWarn.textContent = `⚠️ ${ptr.warning}`;
+        rdnsWarn.classList.remove('alert-hidden');
+      }
+
+      if (ptr.rfc2317) {
+        resRdnsRfc2317Wrap.style.display = 'block';
+        resRdnsRfc2317Val.textContent = ptr.rfc2317.subnetZoneHyphen;
+      }
       return;
     }
 
     // Invalid input
-    rdnsAlert.textContent = '有効なIPアドレス (例: 192.168.1.1, 2001:db8::1) または逆引きレコード (.in-addr.arpa, .ip6.arpa) を入力してください。';
+    rdnsAlert.textContent = '有効なIPアドレス (例: 192.168.1.1, 2001:db8::1)、CIDRプレフィックス (例: 192.168.1.0/24, 2001:db8::/32)、または逆引きレコード/ゾーン (.in-addr.arpa, .ip6.arpa) を入力してください。';
     rdnsAlert.classList.remove('alert-hidden');
     rdnsInput.classList.add('error');
     resRdnsVal1.textContent = '-';
+    resRdnsOriginVal.textContent = '-';
   }
 
   rdnsInput.addEventListener('input', updateRdns);

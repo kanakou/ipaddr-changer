@@ -94,34 +94,63 @@
     <!-- Tab 2: Reverse DNS -->
     <main id="tab-reversedns" class="tab-content" style="display: none;">
       <div class="card">
-        <h2 class="card-title">🌐 逆引きDNS レコード (PTR) 相互変換</h2>
-        <p class="card-desc">IPアドレス (IPv4 / IPv6) と 逆引きドメイン (<code>.in-addr.arpa</code> / <code>.ip6.arpa</code>) を双方向に変換します。RFC 5952 に準拠したゼロ圧縮 IPv6 も自動処理します。</p>
+        <h2 class="card-title">🌐 逆引きDNS レコード (PTR / ゾーン名) 相互変換</h2>
+        <p class="card-desc">IPアドレス・CIDRサブネット (IPv4 / IPv6) と 逆引きドメイン (<code>.in-addr.arpa</code> / <code>.ip6.arpa</code>) を双方向に変換します。ホストのPTRレコードだけでなく、サブネット委任ゾーン名（<code>/24</code>, <code>/16</code>, <code>/8</code>, RFC 2317, <code>/32</code>, <code>/56</code> 等）も自動処理します。</p>
 
         <div class="form-group">
-          <label class="form-label" for="rdns-input">入力 (IPアドレス または 逆引きDNSレコード)</label>
+          <label class="form-label" for="rdns-input">入力 (IPアドレス、CIDRプレフィックス、または逆引きDNSゾーン/レコード)</label>
           <div class="input-wrapper">
-            <input type="text" id="rdns-input" class="input-text" placeholder="例: 192.168.1.1 または 2001:db8::1 または 1.1.168.192.in-addr.arpa">
+            <input type="text" id="rdns-input" class="input-text" placeholder="例: 192.168.1.0/24, 2001:db8::/32, 1.168.192.in-addr.arpa">
           </div>
           <div class="sample-chips">
-            <span class="sample-label">サンプル:</span>
+            <span class="sample-label">ホスト:</span>
             <button type="button" class="sample-chip" data-fill-rdns="192.168.1.1">192.168.1.1</button>
             <button type="button" class="sample-chip" data-fill-rdns="2001:db8::1">2001:db8::1</button>
-            <button type="button" class="sample-chip" data-fill-rdns="1.1.168.192.in-addr.arpa">1.1.168.192.in-addr.arpa</button>
-            <button type="button" class="sample-chip" data-fill-rdns="1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa">2001:db8::1 (ip6.arpa)</button>
+            <span class="sample-label">IPv4 CIDR:</span>
+            <button type="button" class="sample-chip" data-fill-rdns="192.168.1.0/24">192.168.1.0/24</button>
+            <button type="button" class="sample-chip" data-fill-rdns="10.0.0.0/8">10.0.0.0/8</button>
+            <button type="button" class="sample-chip" data-fill-rdns="192.168.1.0/25">192.168.1.0/25 (RFC2317)</button>
+            <span class="sample-label">IPv6 CIDR:</span>
+            <button type="button" class="sample-chip" data-fill-rdns="2001:db8::/32">2001:db8::/32</button>
+            <button type="button" class="sample-chip" data-fill-rdns="2001:db8:1234:5600::/56">2001:db8:1234:5600::/56</button>
+            <span class="sample-label">ゾーン復元:</span>
+            <button type="button" class="sample-chip" data-fill-rdns="1.168.192.in-addr.arpa">1.168.192.in-addr.arpa</button>
+            <button type="button" class="sample-chip" data-fill-rdns="8.b.d.0.1.0.0.2.ip6.arpa">8.b.d.0.1.0.0.2.ip6.arpa</button>
           </div>
         </div>
 
         <div id="rdns-alert" class="alert alert-error alert-hidden"></div>
+        <div id="rdns-warn" class="alert alert-warning alert-hidden"></div>
 
         <div id="rdns-results" class="result-group">
           <div class="result-item">
             <div class="result-header">
-              <span class="result-title" id="res-rdns-label-1">変換結果</span>
+              <span class="result-title" id="res-rdns-label-1">変換結果 (レコード / ゾーン名)</span>
               <span class="badge" id="res-rdns-badge-1">PTR Record</span>
             </div>
             <div class="copy-box">
               <span class="result-value" id="res-rdns-val-1">-</span>
               <button type="button" class="btn-copy" data-target="res-rdns-val-1">コピー</button>
+            </div>
+          </div>
+
+          <div class="result-item" id="res-rdns-origin-wrap">
+            <div class="result-header">
+              <span class="result-title">DNS ゾーン Origin 表記 (末尾ドット付き)</span>
+            </div>
+            <div class="copy-box">
+              <span class="result-value" id="res-rdns-origin-val">-</span>
+              <button type="button" class="btn-copy" data-target="res-rdns-origin-val">コピー</button>
+            </div>
+          </div>
+
+          <div class="result-item" id="res-rdns-rfc2317-wrap" style="display: none;">
+            <div class="result-header">
+              <span class="result-title">RFC 2317 形式 (ハイフン委任ゾーン表記)</span>
+            </div>
+            <div class="copy-box">
+              <span class="result-value" id="res-rdns-rfc2317-val">-</span>
+              <button type="button" class="btn-copy" data-target="res-rdns-rfc2317-val">コピー</button>
             </div>
           </div>
 

@@ -351,6 +351,20 @@ header {
   border: 1px solid var(--error);
 }
 
+.alert-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid #f59e0b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .alert-warning {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border-color: #d97706;
+  }
+}
+
 .alert-hidden {
   display: none;
 }

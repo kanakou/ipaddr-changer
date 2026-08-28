@@ -1,7 +1,7 @@
 /**
  * ip-utils.js
  * IPアドレスのパース、バリデーション、相互変換を行う高精度ユーティリティライブラリ
- * RFC 4291, RFC 5952, RFC 6052, RFC 1035 準拠
+ * RFC 4291, RFC 5952, RFC 6052, RFC 1035, RFC 2317 準拠
  */
 
 (function (root, factory) {
@@ -32,7 +32,6 @@
     const bytes = new Uint8Array(4);
     for (let i = 0; i < 4; i++) {
       const part = parts[i];
-      // 0-255 の整数チェック（空文字や余分な文字、リーディングゼロのチェック）
       if (!/^\d+$/.test(part)) return null;
       if (part.length > 1 && part.startsWith('0')) return null; // 01 などの8進数誤認防止
       const num = Number(part);
@@ -85,7 +84,6 @@
       if (potentialV4.includes('.')) {
         const embeddedV4Bytes = parseIPv4(potentialV4);
         if (!embeddedV4Bytes) return null;
-        // IPv4部分を2つの16進数ブロックに置き換える
         const hex1 = ((embeddedV4Bytes[0] << 8) | embeddedV4Bytes[1]).toString(16);
         const hex2 = ((embeddedV4Bytes[2] << 8) | embeddedV4Bytes[3]).toString(16);
         s = s.slice(0, lastColon + 1) + hex1 + ':' + hex2;
@@ -107,7 +105,6 @@
       left = s.split(':');
     }
 
-    // 各要素が有効な16進数か検証 (1〜4文字の 0-9a-f)
     const validateParts = (parts) => {
       for (const p of parts) {
         if (!/^[0-9a-f]{1,4}$/.test(p)) return false;
@@ -124,7 +121,6 @@
       if (totalSpecified !== 8) return null;
     }
 
-    // 16bitワード (8個) の配列を構築
     const words = new Uint16Array(8);
     let wordIdx = 0;
     for (const p of left) {
@@ -138,7 +134,6 @@
       words[wordIdx++] = parseInt(p, 16);
     }
 
-    // 16バイト配列へ変換
     const bytes = new Uint8Array(16);
     for (let i = 0; i < 8; i++) {
       bytes[i * 2] = (words[i] >> 8) & 0xff;
@@ -171,13 +166,10 @@
 
   /**
    * 16バイト配列を RFC 5952 推奨表記の IPv6 文字列に変換
-   * - 小文字
-   * - 連続するゼロの最長グループを :: で圧縮 (長さ2以上、同長なら先頭優先)
-   * - 16進ブロック内の先行ゼロ除去
    * @param {Uint8Array} bytes
-   * @param {Object} options
-   * @param {boolean} [options.compress=true] :: による圧縮を行うか
-   * @param {boolean} [options.full=false] 完全展開形式 (各ブロック4桁、コロン7個) で出力するか
+   * @param {Object} [options]
+   * @param {boolean} [options.compress=true]
+   * @param {boolean} [options.full=false]
    * @returns {string}
    */
   function formatIPv6(bytes, options = {}) {
@@ -194,7 +186,6 @@
       return words.map((w) => w.toString(16)).join(':');
     }
 
-    // 最長連続ゼロの検索 (RFC 5952 section 4.2)
     let bestStart = -1;
     let bestLen = 0;
     let curStart = -1;
@@ -256,9 +247,79 @@
   }
 
   /**
-   * IPv4 アドレスを NAT64 プレフィックス (RFC 6052 /96 Well-Known: 64:ff9b::/96) を持つ IPv6 アドレスに変換
+   * CIDR表記 (または単一IP) をパースする
+   * @param {string} input
+   * @returns {{ ip: string, prefix: number, type: 'ipv4' | 'ipv6', bytes: Uint8Array, isCIDR: boolean } | null}
+   */
+  function parseCIDR(input) {
+    if (typeof input !== 'string') return null;
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    const slashIdx = trimmed.indexOf('/');
+    if (slashIdx !== -1) {
+      const ipPart = trimmed.slice(0, slashIdx).trim();
+      const prefixPart = trimmed.slice(slashIdx + 1).trim();
+      if (!/^\d+$/.test(prefixPart)) return null;
+      const prefix = Number(prefixPart);
+
+      const v4Bytes = parseIPv4(ipPart);
+      if (v4Bytes) {
+        if (prefix < 0 || prefix > 32) return null;
+        return {
+          ip: formatIPv4(v4Bytes),
+          prefix,
+          type: 'ipv4',
+          bytes: v4Bytes,
+          isCIDR: true,
+        };
+      }
+
+      const v6Bytes = parseIPv6(ipPart);
+      if (v6Bytes) {
+        if (prefix < 0 || prefix > 128) return null;
+        return {
+          ip: formatIPv6(v6Bytes, { compress: true }),
+          prefix,
+          type: 'ipv6',
+          bytes: v6Bytes,
+          isCIDR: true,
+        };
+      }
+
+      return null;
+    }
+
+    // スラッシュなし (単一ホスト)
+    const v4Bytes = parseIPv4(trimmed);
+    if (v4Bytes) {
+      return {
+        ip: formatIPv4(v4Bytes),
+        prefix: 32,
+        type: 'ipv4',
+        bytes: v4Bytes,
+        isCIDR: false,
+      };
+    }
+
+    const v6Bytes = parseIPv6(trimmed);
+    if (v6Bytes) {
+      return {
+        ip: formatIPv6(v6Bytes, { compress: true }),
+        prefix: 128,
+        type: 'ipv6',
+        bytes: v6Bytes,
+        isCIDR: false,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * IPv4 アドレスを NAT64 プレフィックス (RFC 6052 /96: 64:ff9b::/96) を持つ IPv6 に変換
    * @param {string} ipv4Str
-   * @param {string} [prefix='64:ff9b::'] /96 prefix
+   * @param {string} [prefix='64:ff9b::']
    * @returns {{ standard: string, full: string, embedded: string } | null}
    */
   function convertV4ToNat64(ipv4Str, prefix = NAT64_WKP_PREFIX) {
@@ -279,7 +340,6 @@
       pBytes = new Uint8Array(parsed);
     }
 
-    // /96 の場合、末尾 4 バイト (12〜15) に IPv4 を埋め込む
     pBytes[12] = v4Bytes[0];
     pBytes[13] = v4Bytes[1];
     pBytes[14] = v4Bytes[2];
@@ -294,7 +354,7 @@
   }
 
   /**
-   * NAT64 IPv6 アドレス (64:ff9b::/96) から IPv4 アドレスを抽出・変換
+   * NAT64 IPv6 アドレスから IPv4 を抽出
    * @param {string} ipv6Str
    * @param {string} [expectedPrefix='64:ff9b::']
    * @returns {string | null}
@@ -303,7 +363,6 @@
     const bytes = parseIPv6(ipv6Str);
     if (!bytes) return null;
 
-    // プレフィックスの検証 (先頭12バイトが 64:ff9b::/96 か)
     if (expectedPrefix === NAT64_WKP_PREFIX || expectedPrefix === '64:ff9b::/96') {
       if (bytes[0] !== 0x00 || bytes[1] !== 0x64 || bytes[2] !== 0xff || bytes[3] !== 0x9b) {
         return null;
@@ -319,12 +378,11 @@
       }
     }
 
-    const v4Bytes = bytes.slice(12, 16);
-    return formatIPv4(v4Bytes);
+    return formatIPv4(bytes.slice(12, 16));
   }
 
   /**
-   * IPv4 を IPv4-Mapped IPv6 アドレス (::ffff:x.x.x.x / RFC 4291) に変換
+   * IPv4 を IPv4-Mapped IPv6 に変換
    * @param {string} ipv4Str
    * @returns {{ standard: string, full: string, dotted: string } | null}
    */
@@ -348,7 +406,7 @@
   }
 
   /**
-   * IPv4-Mapped IPv6 アドレスから IPv4 を抽出
+   * IPv4-Mapped IPv6 から IPv4 を抽出
    * @param {string} ipv6Str
    * @returns {string | null}
    */
@@ -356,7 +414,6 @@
     const bytes = parseIPv6(ipv6Str);
     if (!bytes) return null;
 
-    // 先頭10バイトが0、10〜11バイトが0xffffか
     for (let i = 0; i < 10; i++) {
       if (bytes[i] !== 0) return null;
     }
@@ -366,53 +423,280 @@
   }
 
   /**
-   * IP アドレス (IPv4 / IPv6) を逆引き DNS (PTR レコード名) に変換
-   * IPv4: 192.0.2.1 -> 1.2.0.192.in-addr.arpa
-   * IPv6: 2001:db8::1 -> 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa
-   * @param {string} ipStr
-   * @returns {{ record: string, type: 'ipv4' | 'ipv6' } | null}
+   * IP アドレスまたは CIDR プレフィックスを逆引き DNS (PTR レコード / 委任ゾーン名) に変換
+   * @param {string} ipOrCidr
+   * @returns {Object | null}
    */
-  function ipToReverseDNS(ipStr) {
-    const v4Bytes = parseIPv4(ipStr);
-    if (v4Bytes) {
-      const reversed = Array.from(v4Bytes).reverse().join('.');
-      return {
-        record: `${reversed}.in-addr.arpa`,
-        type: 'ipv4',
-      };
-    }
+  function ipToReverseDNS(ipOrCidr) {
+    const parsed = parseCIDR(ipOrCidr);
+    if (!parsed) return null;
 
-    const v6Bytes = parseIPv6(ipStr);
-    if (v6Bytes) {
-      const nibbles = [];
-      for (let i = 0; i < 16; i++) {
-        const b = v6Bytes[i];
-        nibbles.push(((b >> 4) & 0xf).toString(16));
-        nibbles.push((b & 0xf).toString(16));
+    const { type, prefix, bytes, isCIDR } = parsed;
+
+    if (type === 'ipv4') {
+      // IPv4
+      if (prefix === 32 && !isCIDR) {
+        // 単一ホスト (PTR レコード)
+        const reversed = Array.from(bytes).reverse().join('.');
+        const record = `${reversed}.in-addr.arpa`;
+        return {
+          record,
+          origin: `${record}.`,
+          type: 'ipv4',
+          prefix: 32,
+          isZone: false,
+          network: formatIPv4(bytes),
+        };
       }
-      const reversedNibbles = nibbles.reverse().join('.');
+
+      // CIDR サブネット / ゾーン
+      if (prefix === 32) {
+        const reversed = Array.from(bytes).reverse().join('.');
+        const record = `${reversed}.in-addr.arpa`;
+        return {
+          record,
+          origin: `${record}.`,
+          type: 'ipv4',
+          prefix: 32,
+          isZone: false,
+          network: `${formatIPv4(bytes)}/32`,
+        };
+      }
+
+      if (prefix === 24) {
+        const record = `${bytes[2]}.${bytes[1]}.${bytes[0]}.in-addr.arpa`;
+        return {
+          record,
+          origin: `${record}.`,
+          type: 'ipv4',
+          prefix: 24,
+          isZone: true,
+          network: `${bytes[0]}.${bytes[1]}.${bytes[2]}.0/24`,
+        };
+      }
+
+      if (prefix === 16) {
+        const record = `${bytes[1]}.${bytes[0]}.in-addr.arpa`;
+        return {
+          record,
+          origin: `${record}.`,
+          type: 'ipv4',
+          prefix: 16,
+          isZone: true,
+          network: `${bytes[0]}.${bytes[1]}.0.0/16`,
+        };
+      }
+
+      if (prefix === 8) {
+        const record = `${bytes[0]}.in-addr.arpa`;
+        return {
+          record,
+          origin: `${record}.`,
+          type: 'ipv4',
+          prefix: 8,
+          isZone: true,
+          network: `${bytes[0]}.0.0.0/8`,
+        };
+      }
+
+      if (prefix === 0) {
+        const record = 'in-addr.arpa';
+        return {
+          record,
+          origin: `${record}.`,
+          type: 'ipv4',
+          prefix: 0,
+          isZone: true,
+          network: '0.0.0.0/0',
+        };
+      }
+
+      // オクテット境界以外 (例: /25〜/31, /17〜/23, /9〜/15, /1〜/7)
+      if (prefix > 24) {
+        const parentZone = `${bytes[2]}.${bytes[1]}.${bytes[0]}.in-addr.arpa`;
+        const startHost = bytes[3] & (~((1 << (32 - prefix)) - 1) & 0xff);
+        const rfc2317Slash = `${startHost}/${prefix}.${parentZone}`;
+        const rfc2317Hyphen = `${startHost}-${prefix}.${parentZone}`;
+        return {
+          record: rfc2317Slash,
+          origin: `${rfc2317Slash}.`,
+          type: 'ipv4',
+          prefix,
+          isZone: true,
+          parentZone: `${parentZone}.`,
+          parentPrefix: 24,
+          rfc2317: {
+            parentZone: `${parentZone}.`,
+            subnetZoneSlash: `${rfc2317Slash}.`,
+            subnetZoneHyphen: `${rfc2317Hyphen}.`,
+          },
+          warning: `非オクテット境界 (/${prefix}) のサブネットです。RFC 2317 に基づく委任ゾーンまたは親ゾーン (${parentZone}.) で管理されます。`,
+          network: `${bytes[0]}.${bytes[1]}.${bytes[2]}.${startHost}/${prefix}`,
+        };
+      }
+
+      if (prefix > 16) {
+        const parentZone = `${bytes[1]}.${bytes[0]}.in-addr.arpa`;
+        return {
+          record: parentZone,
+          origin: `${parentZone}.`,
+          type: 'ipv4',
+          prefix,
+          isZone: true,
+          parentZone: `${parentZone}.`,
+          parentPrefix: 16,
+          warning: `非オクテット境界 (/${prefix}) のため、親ゾーン (${parentZone}.) または個別の /24 ゾーン群で管理されます。`,
+          network: `${formatIPv4(bytes)}/${prefix}`,
+        };
+      }
+
+      if (prefix > 8) {
+        const parentZone = `${bytes[0]}.in-addr.arpa`;
+        return {
+          record: parentZone,
+          origin: `${parentZone}.`,
+          type: 'ipv4',
+          prefix,
+          isZone: true,
+          parentZone: `${parentZone}.`,
+          parentPrefix: 8,
+          warning: `非オクテット境界 (/${prefix}) のため、親ゾーン (${parentZone}.) または個別の /16 ゾーン群で管理されます。`,
+          network: `${formatIPv4(bytes)}/${prefix}`,
+        };
+      }
+
       return {
-        record: `${reversedNibbles}.ip6.arpa`,
-        type: 'ipv6',
+        record: 'in-addr.arpa',
+        origin: 'in-addr.arpa.',
+        type: 'ipv4',
+        prefix,
+        isZone: true,
+        parentZone: 'in-addr.arpa.',
+        parentPrefix: 0,
+        warning: `非オクテット境界 (/${prefix}) のため、in-addr.arpa. または個別の /8 ゾーン群で管理されます。`,
+        network: `${formatIPv4(bytes)}/${prefix}`,
       };
     }
 
-    return null;
+    // IPv6
+    const nibbles = [];
+    for (let i = 0; i < 16; i++) {
+      const b = bytes[i];
+      nibbles.push(((b >> 4) & 0xf).toString(16));
+      nibbles.push((b & 0xf).toString(16));
+    }
+
+    if (prefix === 128 && !isCIDR) {
+      // 単一ホスト (PTR レコード)
+      const reversed = nibbles.slice().reverse().join('.');
+      const record = `${reversed}.ip6.arpa`;
+      return {
+        record,
+        origin: `${record}.`,
+        type: 'ipv6',
+        prefix: 128,
+        isZone: false,
+        network: formatIPv6(bytes, { compress: true }),
+      };
+    }
+
+    // ニブル境界 (4bit 境界: prefix % 4 === 0)
+    if (prefix % 4 === 0) {
+      const N = prefix / 4;
+      let record;
+      if (N === 0) {
+        record = 'ip6.arpa';
+      } else {
+        const selected = nibbles.slice(0, N);
+        record = `${selected.reverse().join('.')}.ip6.arpa`;
+      }
+      return {
+        record,
+        origin: `${record}.`,
+        type: 'ipv6',
+        prefix,
+        nibbleCount: N,
+        isZone: prefix < 128,
+        network: `${formatIPv6(bytes, { compress: true })}/${prefix}`,
+      };
+    }
+
+    // 非ニブル境界 (4の倍数以外、例: /58, /62)
+    const lowerPrefix = Math.floor(prefix / 4) * 4;
+    const N = lowerPrefix / 4;
+    let parentRecord;
+    if (N === 0) {
+      parentRecord = 'ip6.arpa';
+    } else {
+      const selected = nibbles.slice(0, N);
+      parentRecord = `${selected.reverse().join('.')}.ip6.arpa`;
+    }
+
+    return {
+      record: parentRecord,
+      origin: `${parentRecord}.`,
+      type: 'ipv6',
+      prefix,
+      parentPrefix: lowerPrefix,
+      parentZone: `${parentRecord}.`,
+      nibbleCount: N,
+      isZone: true,
+      warning: `DNS (ip6.arpa) は 4 ビット (1 ニブル) 単位でのみ委任可能です。/${prefix} はニブル境界ではないため、親ニブルゾーン /${lowerPrefix} (${parentRecord}.) で委任・管理されます。`,
+      network: `${formatIPv6(bytes, { compress: true })}/${prefix}`,
+    };
   }
 
   /**
-   * 逆引き DNS (PTR レコード名) から IP アドレス (IPv4 / IPv6) を復元
+   * 逆引き DNS (PTR レコードまたはゾーン名) から IP / CIDR ネットワークを復元
    * @param {string} reverseDnsStr
-   * @returns {{ ip: string, type: 'ipv4' | 'ipv6', fullIPv6?: string } | null}
+   * @returns {Object | null}
    */
   function reverseDNSToIP(reverseDnsStr) {
     if (typeof reverseDnsStr !== 'string') return null;
-    const trimmed = reverseDnsStr.trim().toLowerCase().replace(/\.$/, ''); // 末尾のFQDNドットを許容
+    const trimmed = reverseDnsStr.trim().toLowerCase().replace(/\.$/, '');
 
-    if (trimmed.endsWith('.in-addr.arpa')) {
-      const prefix = trimmed.slice(0, -'.in-addr.arpa'.length);
-      const parts = prefix.split('.');
-      if (parts.length !== 4) return null;
+    // .in-addr.arpa
+    if (trimmed.endsWith('.in-addr.arpa') || trimmed === 'in-addr.arpa') {
+      if (trimmed === 'in-addr.arpa') {
+        return {
+          ip: '0.0.0.0/0',
+          type: 'ipv4',
+          prefix: 0,
+          isCIDR: true,
+          isZone: true,
+        };
+      }
+
+      const prefixStr = trimmed.slice(0, -'.in-addr.arpa'.length);
+
+      // RFC 2317 形式のチェック (例: 0/25.1.168.192 または 0-25.1.168.192)
+      const rfc2317Match = prefixStr.match(/^(\d+)[/-](\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+      if (rfc2317Match) {
+        const startHost = Number(rfc2317Match[1]);
+        const pfx = Number(rfc2317Match[2]);
+        const o3 = Number(rfc2317Match[3]);
+        const o2 = Number(rfc2317Match[4]);
+        const o1 = Number(rfc2317Match[5]);
+        if (
+          startHost >= 0 && startHost <= 255 &&
+          pfx >= 1 && pfx <= 32 &&
+          o3 >= 0 && o3 <= 255 &&
+          o2 >= 0 && o2 <= 255 &&
+          o1 >= 0 && o1 <= 255
+        ) {
+          return {
+            ip: `${o1}.${o2}.${o3}.${startHost}/${pfx}`,
+            type: 'ipv4',
+            prefix: pfx,
+            isCIDR: true,
+            isZone: true,
+            isRFC2317: true,
+          };
+        }
+      }
+
+      const parts = prefixStr.split('.');
+      if (parts.length > 4 || parts.length === 0) return null;
 
       const octets = [];
       for (const p of parts) {
@@ -422,36 +706,110 @@
         if (n < 0 || n > 255) return null;
         octets.push(n);
       }
-      const v4 = octets.reverse().join('.');
-      return {
-        ip: v4,
-        type: 'ipv4',
-      };
+
+      const reversed = octets.slice().reverse();
+
+      if (parts.length === 4) {
+        // 完全なホスト (4 オクテット)
+        return {
+          ip: reversed.join('.'),
+          type: 'ipv4',
+          prefix: 32,
+          isCIDR: false,
+          isZone: false,
+        };
+      }
+
+      if (parts.length === 3) {
+        return {
+          ip: `${reversed[0]}.${reversed[1]}.${reversed[2]}.0/24`,
+          type: 'ipv4',
+          prefix: 24,
+          isCIDR: true,
+          isZone: true,
+        };
+      }
+
+      if (parts.length === 2) {
+        return {
+          ip: `${reversed[0]}.${reversed[1]}.0.0/16`,
+          type: 'ipv4',
+          prefix: 16,
+          isCIDR: true,
+          isZone: true,
+        };
+      }
+
+      if (parts.length === 1) {
+        return {
+          ip: `${reversed[0]}.0.0.0/8`,
+          type: 'ipv4',
+          prefix: 8,
+          isCIDR: true,
+          isZone: true,
+        };
+      }
     }
 
-    if (trimmed.endsWith('.ip6.arpa')) {
-      const prefix = trimmed.slice(0, -'.ip6.arpa'.length);
-      const parts = prefix.split('.');
-      if (parts.length !== 32) return null;
+    // .ip6.arpa
+    if (trimmed.endsWith('.ip6.arpa') || trimmed === 'ip6.arpa') {
+      if (trimmed === 'ip6.arpa') {
+        return {
+          ip: '::/0',
+          fullIPv6: '0000:0000:0000:0000:0000:0000:0000:0000/0',
+          type: 'ipv6',
+          prefix: 0,
+          isCIDR: true,
+          isZone: true,
+        };
+      }
+
+      const prefixStr = trimmed.slice(0, -'.ip6.arpa'.length);
+      const parts = prefixStr.split('.');
+      if (parts.length > 32 || parts.length === 0) return null;
 
       const nibbles = [];
       for (const p of parts) {
         if (!/^[0-9a-f]$/.test(p)) return null;
         nibbles.push(p);
       }
-      const reversed = nibbles.reverse();
+
+      const reversed = nibbles.slice().reverse();
+      const N = reversed.length;
+      const prefix = N * 4;
+
+      // 32文字に0埋めパディング
+      const paddedNibbles = reversed.concat(new Array(32 - N).fill('0'));
 
       const bytes = new Uint8Array(16);
       for (let i = 0; i < 16; i++) {
-        const high = parseInt(reversed[i * 2], 16);
-        const low = parseInt(reversed[i * 2 + 1], 16);
+        const high = parseInt(paddedNibbles[i * 2], 16);
+        const low = parseInt(paddedNibbles[i * 2 + 1], 16);
         bytes[i] = (high << 4) | low;
       }
 
+      const standard = formatIPv6(bytes, { compress: true });
+      const full = formatIPv6(bytes, { full: true });
+
+      if (N === 32) {
+        return {
+          ip: standard,
+          fullIPv6: full,
+          type: 'ipv6',
+          prefix: 128,
+          isCIDR: false,
+          isZone: false,
+        };
+      }
+
       return {
-        ip: formatIPv6(bytes, { compress: true }),
-        fullIPv6: formatIPv6(bytes, { full: true }),
+        ip: `${standard}/${prefix}`,
+        fullIPv6: `${full}/${prefix}`,
         type: 'ipv6',
+        prefix,
+        isCIDR: true,
+        isZone: true,
+        nibbleCount: N,
       };
     }
 
@@ -459,62 +817,68 @@
   }
 
   /**
-   * IPアドレスの包括的詳細情報を取得
+   * IPアドレスまたは CIDR の包括的詳細情報を取得
    * @param {string} ipStr
    * @returns {Object | null}
    */
   function getIPDetails(ipStr) {
-    const v4 = parseIPv4(ipStr);
-    if (v4) {
-      const num = ((v4[0] << 24) >>> 0) + (v4[1] << 16) + (v4[2] << 8) + v4[3];
-      const binary = Array.from(v4)
+    const parsed = parseCIDR(ipStr);
+    if (!parsed) return null;
+
+    const { type, prefix, isCIDR, bytes } = parsed;
+
+    if (type === 'ipv4') {
+      const num = ((bytes[0] << 24) >>> 0) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3];
+      const binary = Array.from(bytes)
         .map((b) => b.toString(2).padStart(8, '0'))
         .join('.');
-      const hex = '0x' + Array.from(v4).map((b) => b.toString(16).padStart(2, '0')).join('');
+      const hex = '0x' + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
       const reverse = ipToReverseDNS(ipStr);
-      const nat64 = convertV4ToNat64(ipStr);
-      const mapped = convertV4ToMapped(ipStr);
+      const nat64 = convertV4ToNat64(formatIPv4(bytes));
+      const mapped = convertV4ToMapped(formatIPv4(bytes));
 
       let scope = 'Public (グローバル)';
-      if (v4[0] === 10 || (v4[0] === 172 && v4[1] >= 16 && v4[1] <= 31) || (v4[0] === 192 && v4[1] === 168)) {
+      if (bytes[0] === 10 || (bytes[0] === 172 && bytes[1] >= 16 && bytes[1] <= 31) || (bytes[0] === 192 && bytes[1] === 168)) {
         scope = 'Private (RFC 1918 プライベート)';
-      } else if (v4[0] === 127) {
+      } else if (bytes[0] === 127) {
         scope = 'Loopback (127.0.0.0/8 ループバック)';
-      } else if (v4[0] === 169 && v4[1] === 254) {
+      } else if (bytes[0] === 169 && bytes[1] === 254) {
         scope = 'Link-Local (169.254.0.0/16 リンクローカル)';
-      } else if (v4[0] >= 224 && v4[0] <= 239) {
+      } else if (bytes[0] >= 224 && bytes[0] <= 239) {
         scope = 'Multicast (224.0.0.0/4 マルチキャスト)';
-      } else if (v4[0] === 0) {
+      } else if (bytes[0] === 0) {
         scope = 'Current Network (0.0.0.0/8)';
-      } else if (v4[0] === 255 && v4[1] === 255 && v4[2] === 255 && v4[3] === 255) {
+      } else if (bytes[0] === 255 && bytes[1] === 255 && bytes[2] === 255 && bytes[3] === 255) {
         scope = 'Broadcast (ブロードキャスト)';
       }
 
       return {
         version: 4,
-        standard: formatIPv4(v4),
+        standard: isCIDR ? `${formatIPv4(bytes)}/${prefix}` : formatIPv4(bytes),
+        prefix,
+        isCIDR,
         decimal: num,
         binary,
         hex,
         scope,
         reverseDNS: reverse ? reverse.record : null,
+        reverseOrigin: reverse ? reverse.origin : null,
         nat64: nat64 ? nat64.standard : null,
         mapped: mapped ? mapped.dotted : null,
       };
     }
 
-    const v6 = parseIPv6(ipStr);
-    if (v6) {
-      const full = formatIPv6(v6, { full: true });
-      const standard = formatIPv6(v6, { compress: true });
-      const binary = Array.from(v6)
+    if (type === 'ipv6') {
+      const full = formatIPv6(bytes, { full: true });
+      const standard = formatIPv6(bytes, { compress: true });
+      const binary = Array.from(bytes)
         .map((b) => b.toString(2).padStart(8, '0'))
         .join(':');
-      const hex = '0x' + Array.from(v6).map((b) => b.toString(16).padStart(2, '0')).join('');
+      const hex = '0x' + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
       const reverse = ipToReverseDNS(ipStr);
 
       let scope = 'Global Unicast (グローバルユニキャスト)';
-      const words = bytesToWords(v6);
+      const words = bytesToWords(bytes);
       if (words.every((w) => w === 0)) {
         scope = 'Unspecified (::/128 未指定)';
       } else if (words.slice(0, 7).every((w) => w === 0) && words[7] === 1) {
@@ -533,16 +897,19 @@
         scope = 'Documentation (2001:db8::/32 ドキュメント用)';
       }
 
-      const extractedV4 = convertNat64ToV4(ipStr) || convertMappedToV4(ipStr);
+      const extractedV4 = convertNat64ToV4(standard) || convertMappedToV4(standard);
 
       return {
         version: 6,
-        standard,
-        full,
+        standard: isCIDR ? `${standard}/${prefix}` : standard,
+        full: isCIDR ? `${full}/${prefix}` : full,
+        prefix,
+        isCIDR,
         binary,
         hex,
         scope,
         reverseDNS: reverse ? reverse.record : null,
+        reverseOrigin: reverse ? reverse.origin : null,
         extractedIPv4: extractedV4,
       };
     }
@@ -557,6 +924,7 @@
     isValidIPv6,
     parseIPv4,
     parseIPv6,
+    parseCIDR,
     formatIPv4,
     formatIPv6,
     expandIPv6,
@@ -570,4 +938,3 @@
     getIPDetails,
   };
 });
-

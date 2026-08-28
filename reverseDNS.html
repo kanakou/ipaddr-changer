@@ -3,42 +3,71 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>逆引きDNS レコード (PTR) 相互変換ツール</title>
+  <title>逆引きDNS レコード (PTR / ゾーン名) 相互変換ツール</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1 class="site-title">🌐 逆引きDNS (PTR) 相互変換</h1>
-      <p class="site-description">IPアドレス (IPv4 / IPv6) と 逆引きドメイン (<code>.in-addr.arpa</code> / <code>.ip6.arpa</code>) を相互に変換します</p>
+      <h1 class="site-title">🌐 逆引きDNS (PTR / ゾーン名) 相互変換</h1>
+      <p class="site-description">IPアドレス・CIDRサブネット (IPv4 / IPv6) と 逆引きドメイン (<code>.in-addr.arpa</code> / <code>.ip6.arpa</code>) を相互に変換します</p>
     </header>
 
     <div class="card">
       <div class="form-group">
-        <label class="form-label" for="input">入力 (IPアドレス または 逆引きDNSレコード)</label>
+        <label class="form-label" for="input">入力 (IPアドレス、CIDRプレフィックス、または逆引きDNSゾーン/レコード)</label>
         <div class="input-wrapper">
-          <input id="input" type="text" class="input-text" placeholder="例: 192.168.1.1 または 2001:db8::1 または 1.1.168.192.in-addr.arpa" autofocus>
+          <input id="input" type="text" class="input-text" placeholder="例: 192.168.1.0/24 または 2001:db8::/32 または 1.168.192.in-addr.arpa" autofocus>
         </div>
         <div class="sample-chips">
-          <span class="sample-label">サンプル:</span>
+          <span class="sample-label">ホスト:</span>
           <button type="button" class="sample-chip" data-fill="192.168.1.1">192.168.1.1</button>
           <button type="button" class="sample-chip" data-fill="2001:db8::1">2001:db8::1</button>
-          <button type="button" class="sample-chip" data-fill="1.1.168.192.in-addr.arpa">1.1.168.192.in-addr.arpa</button>
-          <button type="button" class="sample-chip" data-fill="1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa">2001:db8::1 (ip6.arpa)</button>
+          <span class="sample-label">IPv4 CIDR:</span>
+          <button type="button" class="sample-chip" data-fill="192.168.1.0/24">192.168.1.0/24</button>
+          <button type="button" class="sample-chip" data-fill="10.0.0.0/8">10.0.0.0/8</button>
+          <button type="button" class="sample-chip" data-fill="192.168.1.0/25">192.168.1.0/25 (RFC2317)</button>
+          <span class="sample-label">IPv6 CIDR:</span>
+          <button type="button" class="sample-chip" data-fill="2001:db8::/32">2001:db8::/32</button>
+          <button type="button" class="sample-chip" data-fill="2001:db8:1234:5600::/56">2001:db8:1234:5600::/56</button>
+          <span class="sample-label">ゾーン復元:</span>
+          <button type="button" class="sample-chip" data-fill="1.168.192.in-addr.arpa">1.168.192.in-addr.arpa</button>
+          <button type="button" class="sample-chip" data-fill="8.b.d.0.1.0.0.2.ip6.arpa">8.b.d.0.1.0.0.2.ip6.arpa</button>
         </div>
       </div>
 
       <div id="alert-box" class="alert alert-error alert-hidden"></div>
+      <div id="warn-box" class="alert alert-warning alert-hidden"></div>
 
       <div class="result-group">
         <div class="result-item">
           <div class="result-header">
-            <span class="result-title" id="output-label">変換結果</span>
+            <span class="result-title" id="output-label">変換結果 (レコード / ゾーン名)</span>
             <span class="badge" id="output-badge">PTR Record</span>
           </div>
           <div class="copy-box">
             <span class="result-value" id="output-main">-</span>
             <button type="button" class="btn-copy" data-target="output-main">コピー</button>
+          </div>
+        </div>
+
+        <div class="result-item" id="output-origin-wrap">
+          <div class="result-header">
+            <span class="result-title">DNS ゾーン Origin 表記 (末尾ドット付き)</span>
+          </div>
+          <div class="copy-box">
+            <span class="result-value" id="output-origin">-</span>
+            <button type="button" class="btn-copy" data-target="output-origin">コピー</button>
+          </div>
+        </div>
+
+        <div class="result-item" id="output-rfc2317-wrap" style="display: none;">
+          <div class="result-header">
+            <span class="result-title">RFC 2317 形式 (ハイフン委任ゾーン表記)</span>
+          </div>
+          <div class="copy-box">
+            <span class="result-value" id="output-rfc2317">-</span>
+            <button type="button" class="btn-copy" data-target="output-rfc2317">コピー</button>
           </div>
         </div>
 
