@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const outWkp = document.getElementById('output-wkp');
   const outFull = document.getElementById('output-full');
   const outMapped = document.getElementById('output-mapped');
+  const outMappedHex = document.getElementById('output-mapped-hex');
+  const outMappedFull = document.getElementById('output-mapped-full');
 
   let mode = 'auto'; // 'auto' | 'v4tov6' | 'v6tov4'
 
@@ -86,17 +88,21 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderOutputs(v4Str) {
     const nat64 = IPUtils.convertV4ToNat64(v4Str);
     const mapped = IPUtils.convertV4ToMapped(v4Str);
-    outV4.textContent = v4Str;
-    outWkp.textContent = nat64.standard;
-    outFull.textContent = nat64.full;
-    outMapped.textContent = mapped.dotted;
+    if (outV4) outV4.textContent = v4Str;
+    if (outWkp) outWkp.textContent = nat64.standard;
+    if (outFull) outFull.textContent = nat64.full;
+    if (outMapped) outMapped.textContent = mapped.dotted;
+    if (outMappedHex) outMappedHex.textContent = mapped.hex || mapped.standard;
+    if (outMappedFull) outMappedFull.textContent = mapped.full;
   }
 
   function clearOutputs() {
-    outV4.textContent = '-';
-    outWkp.textContent = '-';
-    outFull.textContent = '-';
-    outMapped.textContent = '-';
+    if (outV4) outV4.textContent = '-';
+    if (outWkp) outWkp.textContent = '-';
+    if (outFull) outFull.textContent = '-';
+    if (outMapped) outMapped.textContent = '-';
+    if (outMappedHex) outMappedHex.textContent = '-';
+    if (outMappedFull) outMappedFull.textContent = '-';
   }
 
   function showError(msg) {

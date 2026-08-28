@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const resNat64Wkp = document.getElementById('res-nat64-wkp');
   const resNat64Full = document.getElementById('res-nat64-full');
   const resNat64Mapped = document.getElementById('res-nat64-mapped');
+  const resNat64MappedHex = document.getElementById('res-nat64-mapped-hex');
+  const resNat64MappedFull = document.getElementById('res-nat64-mapped-full');
 
   let nat64Mode = 'auto'; // 'auto' | 'v4tov6' | 'v6tov4'
 
@@ -86,6 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
       resNat64Wkp.textContent = '-';
       resNat64Full.textContent = '-';
       resNat64Mapped.textContent = '-';
+      if (resNat64MappedHex) resNat64MappedHex.textContent = '-';
+      if (resNat64MappedFull) resNat64MappedFull.textContent = '-';
       return;
     }
 
@@ -103,6 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
       resNat64Wkp.textContent = nat64.standard;
       resNat64Full.textContent = nat64.full;
       resNat64Mapped.textContent = mapped.dotted;
+      if (resNat64MappedHex) resNat64MappedHex.textContent = mapped.hex || mapped.standard;
+      if (resNat64MappedFull) resNat64MappedFull.textContent = mapped.full;
       return;
     }
 
@@ -122,6 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
       resNat64Wkp.textContent = nat64.standard;
       resNat64Full.textContent = nat64.full;
       resNat64Mapped.textContent = mapped.dotted;
+      if (resNat64MappedHex) resNat64MappedHex.textContent = mapped.hex || mapped.standard;
+      if (resNat64MappedFull) resNat64MappedFull.textContent = mapped.full;
       return;
     }
 
@@ -133,6 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
       resNat64Wkp.textContent = nat64.standard;
       resNat64Full.textContent = nat64.full;
       resNat64Mapped.textContent = mapped.dotted;
+      if (resNat64MappedHex) resNat64MappedHex.textContent = mapped.hex || mapped.standard;
+      if (resNat64MappedFull) resNat64MappedFull.textContent = mapped.full;
     } else if (isV6) {
       const extractedV4 = IPUtils.convertNat64ToV4(rawVal) || IPUtils.convertMappedToV4(rawVal);
       if (!extractedV4) {
@@ -145,6 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
       resNat64Wkp.textContent = nat64.standard;
       resNat64Full.textContent = nat64.full;
       resNat64Mapped.textContent = mapped.dotted;
+      if (resNat64MappedHex) resNat64MappedHex.textContent = mapped.hex || mapped.standard;
+      if (resNat64MappedFull) resNat64MappedFull.textContent = mapped.full;
     } else {
       showNat64Error('無効なIPアドレス形式です。正しいIPv4またはIPv6アドレスを入力してください。');
     }
@@ -158,6 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
     resNat64Wkp.textContent = '-';
     resNat64Full.textContent = '-';
     resNat64Mapped.textContent = '-';
+    if (resNat64MappedHex) resNat64MappedHex.textContent = '-';
+    if (resNat64MappedFull) resNat64MappedFull.textContent = '-';
   }
 
   nat64Input.addEventListener('input', updateNat64);
