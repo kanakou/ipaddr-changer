@@ -28,25 +28,54 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- Tab Navigation ---
+  // --- Tab Navigation & Hash Routing ---
   const tabButtons = document.querySelectorAll('.nav-tab');
   const tabContents = document.querySelectorAll('.tab-content');
 
-  tabButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      tabButtons.forEach((b) => b.classList.remove('active'));
-      tabContents.forEach((c) => (c.style.display = 'none'));
+  function normalizeTabName(name) {
+    if (!name) return 'nat64';
+    const clean = name.replace(/^#/, '').toLowerCase();
+    if (clean === 'rdns' || clean === 'reversedns' || clean === 'dns') return 'reversedns';
+    if (clean === 'nat64' || clean === 'mapped' || clean === 'v4tov6' || clean === 'v6tov4') return 'nat64';
+    if (clean === 'analyzer' || clean === 'details' || clean === 'ipv6') return 'analyzer';
+    return 'nat64';
+  }
 
-      btn.classList.add('active');
-      const targetTabId = 'tab-' + btn.getAttribute('data-tab');
-      const targetContent = document.getElementById(targetTabId);
-      if (targetContent) {
-        targetContent.style.display = 'block';
-        const input = targetContent.querySelector('input');
+  function switchTab(tabKey, updateHash = true) {
+    const norm = normalizeTabName(tabKey);
+    tabButtons.forEach((b) => {
+      const match = b.getAttribute('data-tab') === norm;
+      b.classList.toggle('active', match);
+    });
+    tabContents.forEach((c) => {
+      const match = c.id === 'tab-' + norm;
+      c.style.display = match ? 'block' : 'none';
+      if (match) {
+        const input = c.querySelector('input');
         if (input) input.focus();
       }
     });
+
+    if (updateHash && window.location.hash !== '#' + norm) {
+      history.replaceState(null, '', '#' + norm);
+    }
+  }
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tabName = btn.getAttribute('data-tab');
+      switchTab(tabName, true);
+    });
   });
+
+  window.addEventListener('hashchange', () => {
+    switchTab(window.location.hash, false);
+  });
+
+  // 初期ハッシュルーティング
+  if (window.location.hash) {
+    switchTab(window.location.hash, false);
+  }
 
   // --- TAB 1: NAT64 / IPv4-Mapped ---
   const nat64Input = document.getElementById('nat64-input');

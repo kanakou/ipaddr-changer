@@ -56,10 +56,6 @@ ipaddr-changer/
 ├── test/
 │   └── ip-utils.test.js     # 単体テスト (node:test)
 ├── index.html               # 統合 Web アプリケーション
-├── nat64.html               # NAT64 専用ページ
-├── nat64.js                 # NAT64 専用ページ用スクリプト
-├── reverseDNS.html          # 逆引き DNS 専用ページ
-├── reverseDNS.js            # 逆引き DNS 専用ページ用スクリプト
 └── README.md                # ドキュメント
 ```
 
