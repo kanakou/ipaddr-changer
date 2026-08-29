@@ -50,12 +50,15 @@
 ipaddr-changer/
 ├── css/
 │   └── style.css            # デザインシステム & スタイルシート
+├── icons/                   # PWA 用アプリアイコン (SVG, PNG)
 ├── js/
 │   ├── ip-utils.js          # コア変換ロジック (ブラウザ・Node.js 共通)
 │   └── app.js               # index.html 用コントローラー
 ├── test/
 │   └── ip-utils.test.js     # 単体テスト (node:test)
 ├── index.html               # 統合 Web アプリケーション
+├── manifest.json            # PWA マニフェスト設定
+├── sw.js                    # Service Worker (オフライン完全対応キャッシュ)
 └── README.md                # ドキュメント
 ```
 

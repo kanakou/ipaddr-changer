@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="iconGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- Background with smooth rounded corners -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  
+  <!-- Central IP Network / Lightning Icon -->
+  <g filter="url(#shadow)" fill="url(#iconGlow)">
+    <!-- Lightning Bolt / Arrow transform symbol -->
+    <path d="M280 88L144 272h104l-32 152 152-192H264l48-144z"/>
+    <!-- Connected Network Nodes -->
+    <circle cx="120" cy="140" r="24"/>
+    <circle cx="392" cy="140" r="24"/>
+    <circle cx="120" cy="380" r="24"/>
+    <circle cx="392" cy="380" r="24"/>
+    
+    <path d="M140 140h40M332 140h40M140 380h40M332 380h40" stroke="#ffffff" stroke-width="12" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>
