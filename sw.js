@@ -7,14 +7,14 @@ const CACHE_NAME = 'ipaddr-changer-v1';
 
 const ASSETS_TO_CACHE = [
   './',
-  'index.html',
-  'css/style.css',
-  'js/ip-utils.js',
-  'js/app.js',
-  'manifest.json',
-  'icons/icon.svg',
-  'icons/icon-192.png',
-  'icons/icon-512.png'
+  './index.html',
+  './css/style.css',
+  './js/ip-utils.js',
+  './js/app.js',
+  './manifest.json',
+  './icons/icon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 // インストール時に全アセットを事前キャッシュ
@@ -66,7 +66,7 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => {
         // オフライン時のフォールバック（HTMLリクエストの場合）
         if (event.request.headers.get('accept')?.includes('text/html')) {
-          return caches.match('index.html');
+          return caches.match('./index.html') || caches.match('./');
         }
       });
     })
