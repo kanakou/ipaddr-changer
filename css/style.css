@@ -425,3 +425,27 @@ footer a:hover {
   text-decoration: underline;
 }
 
+/* Privacy Policy */
+.privacy-policy {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.privacy-policy-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+}
+
+.privacy-policy p + p {
+  margin-top: 0.5rem;
+}
+
