@@ -283,8 +283,30 @@
   <script src="./js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
+      let refreshing = false;
+
+      // 新しいService Workerが有効化された際にページを自動リロードして最新状態を反映
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch((err) => {
+        navigator.serviceWorker.register('./sw.js').then((registration) => {
+          // 新しいService Workerが見つかった場合の検知
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('新しいバージョンのアプリケーションが利用可能です。自動更新されます。');
+                }
+              });
+            }
+          });
+        }).catch((err) => {
           console.warn('ServiceWorker registration failed:', err);
         });
       });
