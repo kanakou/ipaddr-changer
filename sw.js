@@ -3,7 +3,7 @@
  * Network-First（ネットワーク優先）戦略による最新アセット配信とオフライン対応
  */
 
-const CACHE_NAME = 'ipaddr-changer-v1.1.0';
+const CACHE_NAME = 'ipaddr-changer-v1.1.1';
 
 const ASSETS_TO_CACHE = [
   './',
